@@ -6,7 +6,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.25.2",
+  "discord.js": "^14.13.0",
     "@supabase/supabase-js": "^2.39.7"
   }
 }
