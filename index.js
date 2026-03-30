@@ -2,20 +2,49 @@ const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuild
 const { createClient } = require('@supabase/supabase-js');
 
 const TOKEN = process.env.TOKEN;
-const LOG_CHANNEL_ID = "1480713655220965518"; // tu canal logs
-const REPORTE_CHANNEL_ID = "1488082778242154627"; // ⚠️ CAMBIAR
+const LOG_CHANNEL_ID = "1480713655220965518";
+const REPORTE_CHANNEL_ID = "1488082778242154627";
 
+// =====================
 // SUPABASE
+// =====================
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 
-// COMANDO /verhoras
+// =====================
+// FUNCION SEMANA
+// =====================
+function getRangoSemana() {
+  const ahora = new Date();
+  const dia = ahora.getDay(); // domingo = 0
+
+  const inicio = new Date(ahora);
+  inicio.setDate(ahora.getDate() - dia);
+  inicio.setHours(0, 0, 0, 0);
+
+  const fin = new Date(inicio);
+  fin.setDate(inicio.getDate() + 7);
+  fin.setHours(21, 0, 0, 0);
+
+  return {
+    inicio: inicio.toISOString(),
+    fin: fin.toISOString()
+  };
+}
+
+// =====================
+// COMANDOS
+// =====================
 const commands = [
   new SlashCommandBuilder()
     .setName('verhoras')
-    .setDescription('Ver ranking de horas de mecánicos')
+    .setDescription('Ver horas actuales'),
+
+  new SlashCommandBuilder()
+    .setName('cierresemanal')
+    .setDescription('Ver cierre semanal')
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -23,16 +52,18 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 (async () => {
   try {
     await rest.put(
-      Routes.applicationCommands('1480708761889804308'), // TU CLIENT ID
+      Routes.applicationCommands('1480708761889804308'),
       { body: commands }
     );
-    console.log('Comando /verhoras registrado');
+    console.log('Comandos registrados');
   } catch (error) {
     console.error(error);
   }
 })();
 
+// =====================
 // CLIENT
+// =====================
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
@@ -43,47 +74,74 @@ client.once("ready", () => {
   console.log(`Bot iniciado como ${client.user.tag}`);
 });
 
+// =====================
 // EVENTO PRINCIPAL
+// =====================
 client.on("interactionCreate", async (interaction) => {
 
   // =====================
-  // COMANDO /verhoras
+  // COMANDOS
   // =====================
   if (interaction.isChatInputCommand()) {
+
+    const { inicio, fin } = getRangoSemana();
+
+    const { data, error } = await supabase
+      .from("horas")
+      .select("*")
+      .gte("created_at", inicio)
+      .lte("created_at", fin);
+
+    if (error) {
+      console.log(error);
+      return interaction.reply("Error al obtener datos");
+    }
+
+    const ranking = {};
+
+    data.forEach(row => {
+      if (!ranking[row.nombre]) ranking[row.nombre] = 0;
+      ranking[row.nombre] += row.tiempo;
+    });
+
+    const sorted = Object.entries(ranking)
+      .sort((a, b) => b[1] - a[1]);
+
+    // =====================
+    // /verhoras
+    // =====================
     if (interaction.commandName === "verhoras") {
 
-      const { data, error } = await supabase
-        .from("horas")
-        .select("*");
+      let texto = "📊 HORAS SEMANALES\n\n";
 
-      if (error) {
-        console.log(error);
-        return interaction.reply({ content: "Error al obtener datos", ephemeral: true });
-      }
-
-      const ranking = {};
-
-      data.forEach(row => {
-        if (!ranking[row.nombre]) {
-          ranking[row.nombre] = 0;
-        }
-        ranking[row.nombre] += row.tiempo;
+      sorted.forEach(([nombre, tiempo], i) => {
+        const horas = (tiempo / 60).toFixed(1);
+        texto += `${i + 1}. ${nombre} — ${horas}h\n`;
       });
 
-      const sorted = Object.entries(ranking)
-        .sort((a, b) => b[1] - a[1]);
-
-      let texto = "🏆 **Ranking de Mecánicos**\n\n";
-
-      sorted.forEach(([nombre, tiempo], index) => {
-        texto += `${index + 1}. ${nombre} — ${tiempo} min\n`;
-      });
-
-      await interaction.reply(texto);
-
-      const canal = await client.channels.fetch(REPORTE_CHANNEL_ID);
-      canal.send(`📊 Reporte semanal:\n\n${texto}`);
+      return interaction.reply(texto);
     }
+
+    // =====================
+    // /cierresemanal
+    // =====================
+    if (interaction.commandName === "cierresemanal") {
+
+      let cierre = "📊 CIERRE SEMANAL\n\n";
+
+      sorted.forEach(([nombre, tiempo]) => {
+        const horas = (tiempo / 60).toFixed(1);
+        cierre += `${nombre} — ${horas}h ${horas >= 8 ? "✅" : "❌"}\n`;
+      });
+
+      // MANDA AL CANAL AUTOMATICO
+      const canal = await client.channels.fetch(REPORTE_CHANNEL_ID);
+      canal.send(cierre);
+
+      return interaction.reply(cierre);
+    }
+
+    return;
   }
 
   // =====================
@@ -93,7 +151,9 @@ client.on("interactionCreate", async (interaction) => {
 
   const user = interaction.user;
 
-  // INICIO
+  // =====================
+  // INICIO TURNO
+  // =====================
   if (interaction.customId === "entrada") {
 
     if (turnos.has(user.id)) {
@@ -116,7 +176,9 @@ client.on("interactionCreate", async (interaction) => {
     interaction.reply({ content: "Turno iniciado correctamente.", ephemeral: true });
   }
 
-  // SALIDA
+  // =====================
+  // FIN TURNO
+  // =====================
   if (interaction.customId === "salida") {
 
     if (!turnos.has(user.id)) {
@@ -128,7 +190,7 @@ client.on("interactionCreate", async (interaction) => {
 
     const tiempoMin = Math.floor((fin - inicio) / 60000);
 
-    // GUARDAR EN SUPABASE
+    // GUARDAR
     const { data, error } = await supabase.from("horas").insert([
       {
         user_id: user.id,
