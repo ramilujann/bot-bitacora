@@ -5,8 +5,9 @@
   "scripts": {
     "start": "node index.js"
   },
-  "dependencies": {
+"dependencies": {
   "discord.js": "^14.13.0",
-    "@supabase/supabase-js": "^2.39.7"
+  "@supabase/supabase-js": "^2.39.0"
+}
   }
 }
