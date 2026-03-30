@@ -223,3 +223,40 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.login(TOKEN);
+// =====================
+// RESET AUTOMÁTICO DOMINGO 21HS
+// =====================
+
+let ultimoReset = null;
+
+function esDomingo21() {
+  const ahora = new Date();
+
+  const esDomingo = ahora.getDay() === 0;
+  const es21 = ahora.getHours() >= 21;
+
+  const hoy = ahora.toDateString();
+
+  // evita repetir reset
+  if (ultimoReset === hoy) return false;
+
+  return esDomingo && es21;
+}
+
+// chequea cada 1 minuto
+setInterval(async () => {
+  try {
+    if (esDomingo21()) {
+      console.log("🔄 RESET SEMANAL AUTOMÁTICO");
+
+      await supabase.from("horas").delete().neq("id", "");
+
+      ultimoReset = new Date().toDateString();
+
+      const canal = await client.channels.fetch(REPORTE_CHANNEL_ID);
+      canal.send("📅 Nueva semana iniciada automáticamente. Bitácora reiniciada.");
+    }
+  } catch (err) {
+    console.error("Error en reset automático:", err);
+  }
+}, 60000);
