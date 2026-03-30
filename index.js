@@ -52,7 +52,10 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 (async () => {
   try {
     await rest.put(
-      Routes.applicationCommands('1480708761889804308'),
+      Routes.applicationGuildCommands(
+  '1480708761889804308', // BOT ID
+  'ID_DEL_SERVIDOR' // SERVER ID
+)
       { body: commands }
     );
     console.log('Comandos registrados');
