@@ -60,12 +60,14 @@ client.on("interactionCreate", async interaction => {
 const tiempoMin = Math.floor(tiempoMs / 60000);
 
 // GUARDAR EN SUPABASE
-await supabase.from('horas').insert([
+const { data, error } = await supabase.from('horas').insert([
   {
     user_id: user.id,
     tiempo: tiempoMin
   }
 ]);
+
+console.log("SUPABASE RESULT:", data, error);
 
     const tiempo = Math.floor((fin - inicio) / 1000);
 
