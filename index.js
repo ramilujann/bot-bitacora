@@ -3,6 +3,13 @@ const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder
 const TOKEN = process.env.TOKEN;
 const LOG_CHANNEL_ID = "1480713655220965518";
 
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
@@ -49,6 +56,16 @@ client.on("interactionCreate", async interaction => {
 
     const inicio = turnos.get(user.id);
     const fin = Date.now();
+    const tiempoMs = fin - inicio;
+const tiempoMin = Math.floor(tiempoMs / 60000);
+
+// GUARDAR EN SUPABASE
+await supabase.from('horas').insert([
+  {
+    user_id: user.id,
+    tiempo: tiempoMin
+  }
+]);
 
     const tiempo = Math.floor((fin - inicio) / 1000);
 
