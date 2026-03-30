@@ -53,13 +53,15 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
   try {
     await rest.put(
       Routes.applicationGuildCommands(
-  '1480708761889804308', // BOT ID
-  '1478141184240259295' // SERVER ID
-)
+        '1480708761889804308', // BOT ID
+        '1478141184240259295'  // SERVER ID
+      ),
       { body: commands }
     );
+
     console.log('Comandos registrados');
     console.log("✅ /verhoras y /cierresemanal listos");
+
   } catch (error) {
     console.error(error);
   }
