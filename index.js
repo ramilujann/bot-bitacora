@@ -63,7 +63,7 @@ const tiempoMin = Math.floor(tiempoMs / 60000);
 await supabase.from('horas').insert([
   {
     user_id: user.id,
-    nombre: user.username,
+    nombre: interaction.member.displayName,
     tiempo: tiempoMin
   }
 ]);
