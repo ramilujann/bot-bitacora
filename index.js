@@ -54,7 +54,7 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
     await rest.put(
       Routes.applicationGuildCommands(
   '1480708761889804308', // BOT ID
-  'ID_DEL_SERVIDOR' // SERVER ID
+  '1478141184240259295' // SERVER ID
 )
       { body: commands }
     );
